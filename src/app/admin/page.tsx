@@ -23,6 +23,10 @@ export default function AdminPage() {
     const [log, setLog] = useState<string[]>([]);
     const [progress, setProgress] = useState(0);
 
+    // Moved up to avoid hook order error
+    const [stats, setStats] = useState<Record<string, number>>({});
+    const [categories, setCategories] = useState<string[]>([]);
+
     // Get Admin UID from environment
     const ADMIN_UID = process.env.NEXT_PUBLIC_ADMIN_UID;
 
@@ -165,8 +169,8 @@ export default function AdminPage() {
     // if (!user) return <div className="p-8">Please login first.</div>;
 
     // Data verification logic
-    const [stats, setStats] = useState<Record<string, number>>({});
-    const [categories, setCategories] = useState<string[]>([]);
+
+    // Hooks moved to top
 
     const checkStats = async () => {
         const q = query(collection(db, "word_master"));
