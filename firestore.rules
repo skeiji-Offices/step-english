@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if the user is signed in
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users Collection
+    // Basic Rule: Users can only read/write their own data
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Word Master Collection (Game Data)
+    // Read: Allowed for any authenticated user (needed for game)
+    // Write: Allowed for any authenticated user (needed for Admin page)
+    // TODO: In the future, restrict 'write' to specific admin UIDs only.
+    match /word_master/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

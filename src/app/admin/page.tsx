@@ -23,6 +23,26 @@ export default function AdminPage() {
     const [log, setLog] = useState<string[]>([]);
     const [progress, setProgress] = useState(0);
 
+    // Get Admin UID from environment
+    const ADMIN_UID = process.env.NEXT_PUBLIC_ADMIN_UID;
+
+    // Redirect or block if not admin
+    if (!loading && (!user || (ADMIN_UID && user.uid !== ADMIN_UID))) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-800">
+                <div className="text-center">
+                    <h1 className="text-4xl font-bold text-red-600 mb-4">Access Denied</h1>
+                    <p className="mb-4">You do not have permission to view this page.</p>
+                    <a href="/" className="text-blue-600 hover:underline">Return Home</a>
+                    <div className="mt-4 text-xs text-gray-400">
+                        Current UID: {user?.uid || "Not logged in"}<br />
+                        Allowed UID: {ADMIN_UID ? "Set via Env" : "Not Configured"}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -168,6 +188,9 @@ export default function AdminPage() {
         <div className="min-h-screen p-8 bg-gray-50 text-gray-800">
             <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow">
                 <h1 className="text-2xl font-bold mb-6">Admin: Data Import</h1>
+                <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                    <span className="font-bold">Your UID:</span> {user?.uid}
+                </div>
 
                 <div className="mb-6 space-y-2">
                     <label className="block font-medium">Upload CSV (カテゴリー, 英単語, 日本語訳)</label>
