@@ -1,26 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #111827;
+  /* Gray-900 */
+  --foreground: #F9FAFB;
+  /* Gray-50 */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-brand-orange: #EA580C;
+  /* Orange-600 */
+  --color-brand-blue: #2563EB;
+  /* Blue-600 */
+  --color-brand-yellow: #CA8A04;
+  /* Yellow-600 */
+  --color-brand-light: #1F2937;
+  /* Gray-800 (used for page bg in some places) */
+  --color-brand-white: #FFFFFF;
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Custom Utilities for "Pop" feel - Dark Version */
+.btn-primary {
+  @apply bg-brand-orange text-white font-bold py-3 px-6 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 text-center;
+  box-shadow: 0 4px 14px 0 rgba(234, 88, 12, 0.4);
+}
+
+.btn-secondary {
+  @apply bg-brand-blue text-white font-bold py-3 px-6 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 text-center;
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.4);
+}
+
+.card-pop {
+  @apply bg-gray-800 rounded-2xl shadow-xl border border-gray-700 p-6 text-gray-100;
+}
+
+.text-pop-outline {
+  text-shadow: 2px 2px 0px #000000;
 }
