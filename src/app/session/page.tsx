@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { XCircle, CheckCircle, Award, Volume2 } from "lucide-react";
-import { doc, updateDoc, increment, addDoc, collection, serverTimestamp, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, updateDoc, increment, addDoc, collection, serverTimestamp, setDoc, deleteDoc, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 type Phase = "practice" | "test" | "review" | "result";
@@ -97,9 +97,9 @@ function SessionContent() {
     useEffect(() => {
         async function init() {
             let qs: Question[] = [];
-            // Special range -1 used for review mode
             if (range === -1 && user) {
-                qs = await fetchWeakQuestions(user.uid, count);
+                // Pass mode to filter correct weak word type
+                qs = await fetchWeakQuestions(user.uid, count, mode);
             } else {
                 qs = await fetchQuestions(range, count);
             }
@@ -265,23 +265,45 @@ function SessionContent() {
             });
 
             // --- WEAK WORDS LOGIC ---
+            const currentMistakeType = mode === "choice" ? "meaning" : "spelling";
             const missIds = new Set(testMisses.map(q => q.id));
 
             // Process Misses -> Add/Update
             for (const q of testMisses) {
                 const ref = doc(db, `users/${user.uid}/weak_words`, q.id);
+                // Use setDoc with merge to create or update, adding the specific mistake type
                 await setDoc(ref, {
                     ...q,
                     lastMissed: new Date(),
-                    sectionId: q.sectionId || 99
-                });
+                    sectionId: q.sectionId || 99,
+                    weakTypes: arrayUnion(currentMistakeType)
+                }, { merge: true });
             }
 
-            // Process Corrects -> Delete
+            // Process Corrects -> Delete or Remove Type
             const correctQuestions = questions.filter(q => !missIds.has(q.id));
             for (const q of correctQuestions) {
                 const ref = doc(db, `users/${user.uid}/weak_words`, q.id);
-                await deleteDoc(ref).catch(() => { });
+
+                // We need to check existence because we only want to remove if it was there
+                try {
+                    const snap = await getDoc(ref);
+                    if (snap.exists()) {
+                        // Remove this specific mistake type
+                        await updateDoc(ref, {
+                            weakTypes: arrayRemove(currentMistakeType)
+                        });
+
+                        // If no more weak types, delete the doc entirely
+                        const updatedSnap = await getDoc(ref);
+                        const data = updatedSnap.data();
+                        if (data && (!data.weakTypes || data.weakTypes.length === 0)) {
+                            await deleteDoc(ref);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error updating weak word:", q.id, e);
+                }
             }
 
         } catch (e) {

@@ -70,13 +70,22 @@ export async function fetchQuestions(maxSectionId: number, count: number = 10): 
     return questions;
 }
 
-export async function fetchWeakQuestions(uid: string, count: number = 10): Promise<Question[]> {
+export async function fetchWeakQuestions(uid: string, count: number = 10, mode: string = "choice"): Promise<Question[]> {
     const weakRef = collection(db, `users/${uid}/weak_words`);
     const snapshot = await getDocs(weakRef);
 
+    const requiredType = (mode === "choice") ? "meaning" : "spelling";
+
     const weakWords: Word[] = [];
     snapshot.forEach((doc) => {
-        weakWords.push({ id: doc.id, ...doc.data() } as Word);
+        const data = doc.data();
+        // Backward compatibility: if no weakTypes, assume it's valid for both (or at least meaning)
+        // But better to assume both if field missing (old data)
+        const types: string[] = data.weakTypes || ["meaning", "spelling"];
+
+        if (types.includes(requiredType)) {
+            weakWords.push({ id: doc.id, ...data } as Word);
+        }
     });
 
     if (weakWords.length === 0) return [];
