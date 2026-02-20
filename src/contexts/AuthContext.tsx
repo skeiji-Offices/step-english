@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { INITIAL_USER_STATS, checkDailyResets } from "@/lib/userStats";
 
 interface UserData {
     uid: string;
@@ -11,6 +12,15 @@ interface UserData {
     totalStudyTime: number; // seconds
     totalChores: number; // correct count (using 'totalChores' as legacy name from plan, maybe rename to totalCorrect?)
     lastLoginAt: any;
+
+    // New stats
+    exp: number;
+    level: number;
+    streakCount: number;
+    lastStudyDate: string | null;
+    studyCalendar: string[];
+    dailyMission: any; // defined in userStats
+    lastMissionDate: string | null;
 }
 
 interface AuthContextType {
@@ -58,6 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                             lastLoginAt: serverTimestamp(),
                             totalStudyTime: 0,
                             totalChores: 0,
+                            ...INITIAL_USER_STATS
                         };
                         await setDoc(userRef, newUserData);
                         // @ts-ignore
@@ -66,8 +77,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         await setDoc(userRef, {
                             lastLoginAt: serverTimestamp(),
                         }, { merge: true });
+
+                        let data = userSnap.data();
+
+                        // Merge migration for older accounts that lack stats
+                        if (data.exp === undefined) {
+                            data = { ...data, ...INITIAL_USER_STATS };
+                            await setDoc(userRef, data, { merge: true });
+                        }
+
+                        // Check and reset daily logic
                         // @ts-ignore
-                        setUserData(userSnap.data());
+                        const checkedData = await checkDailyResets(currentUser.uid, data as UserStats);
+
+                        // @ts-ignore
+                        setUserData({ ...data, ...checkedData });
                     }
                 } catch (e: any) {
                     console.error("Firestore sync error:", e);

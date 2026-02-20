@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { XCircle, CheckCircle, Award, Volume2 } from "lucide-react";
 import { doc, updateDoc, increment, addDoc, collection, serverTimestamp, setDoc, deleteDoc, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { updateSessionStats, UserStats } from "@/lib/userStats";
 
 type Phase = "practice" | "test" | "review" | "result";
 
@@ -45,6 +46,11 @@ function SessionContent() {
     const [testMisses, setTestMisses] = useState<Question[]>([]);
     const [reviewQueue, setReviewQueue] = useState<Question[]>([]);
     const [startTime, setStartTime] = useState<number>(Date.now());
+
+    // Result feedback flags
+    const [leveledUp, setLeveledUp] = useState(false);
+    const [missionCompleted, setMissionCompleted] = useState(false);
+    const [earnedExp, setEarnedExp] = useState(0);
 
     // TTS Helper
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -257,12 +263,24 @@ function SessionContent() {
                 duration: duration
             });
 
-            // Update stats
+            // Update legacy stats
             const userRef = doc(db, "users", user.uid);
             await updateDoc(userRef, {
                 totalStudyTime: increment(duration),
                 totalChores: increment(finalScore)
             });
+
+            // Update New Motivational Stats
+            const currentUserSnap = await getDoc(userRef);
+            if (currentUserSnap.exists()) {
+                const currentStats = currentUserSnap.data() as UserStats;
+                const { leveledUp: didLevelUp, missionCompleted: didCompleteMission, newStats } =
+                    await updateSessionStats(user.uid, currentStats, finalScore, questions.length);
+
+                setLeveledUp(didLevelUp);
+                setMissionCompleted(didCompleteMission);
+                setEarnedExp(newStats.exp - (currentStats.exp || 0));
+            }
 
             // --- WEAK WORDS LOGIC ---
             const currentMistakeType = mode === "choice" ? "meaning" : "spelling";
@@ -343,6 +361,31 @@ function SessionContent() {
                             <div className="text-gray-500 text-xs">学習時間</div>
                             <div className="font-bold text-xl">{Math.floor((Date.now() - startTime) / 1000)}秒</div>
                         </div>
+                    </div>
+
+                    <div className="bg-gray-700/50 rounded-xl p-4 space-y-3">
+                        <div className="flex justify-between items-center text-sm font-bold">
+                            <span className="text-gray-300">獲得 EXP</span>
+                            <span className="text-brand-yellow">+{earnedExp}</span>
+                        </div>
+                        {missionCompleted && (
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="bg-brand-orange/20 text-brand-orange text-xs py-2 px-3 rounded-md font-bold text-center border border-brand-orange/30"
+                            >
+                                🎉 デイリーミッション達成！
+                            </motion.div>
+                        )}
+                        {leveledUp && (
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="bg-brand-blue/20 text-cyan-400 text-xs py-2 px-3 rounded-md font-bold text-center border border-cyan-400/30"
+                            >
+                                ⭐ レベルアップしました！ ⭐
+                            </motion.div>
+                        )}
                     </div>
 
                     <button
